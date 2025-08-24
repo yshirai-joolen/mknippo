@@ -1,6 +1,25 @@
 use std::fs::File;
 use std::io::prelude::*;
 use reqwest::Response;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Config {
+    slack: SlackConfig,
+}
+
+#[derive(Deserialize)]
+struct SlackConfig {
+    url: String,
+    token: String,
+    channel: String,
+}
+
+fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
+    let contents = std::fs::read_to_string("config.toml")?;
+    let config: Config = toml::from_str(&contents)?;
+    Ok(config)
+}
 
 pub fn run(filename :&str) {
     let mut f = File::open(filename).expect("file not found");
@@ -16,16 +35,17 @@ pub fn run(filename :&str) {
 async fn post_slack(post_message :String) -> Result<Response, Box<dyn std::error::Error>> {
     println!("With text:\n{}", post_message);
 
-    let url = "https://slack.com/api/chat.postMessage";
-    let token = "";
-    let channel = "";
-    let text = post_message;
+    let config = load_config()?;
+    let url = &config.slack.url;
+    let token = &config.slack.token;
+    let channel = &config.slack.channel;
+    let text = &post_message;
 
     let params = [
         ("url", url),
         ("token", token),
         ("channel", channel),
-        ("text", &text),
+        ("text", text),
     ];
 
     let client = reqwest::Client::new();
